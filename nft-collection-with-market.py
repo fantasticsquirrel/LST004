@@ -73,7 +73,7 @@ def buy_nft(name: str, seller: str, amount:int):
     assert amount > 0, 'Cannot buy negative NFT amount'
     assert market[seller, name]["amount"] >= amount, 'Not enough for sale'
 
-    currency.transfer_from(market[seller, name]["price"] * amount, seller, ctx.caller) # Transfers TAU to Seller
+    currency.transfer_from(amount=market[seller, name]["price"] * amount, to=seller, main_account=ctx.caller) # Transfers TAU to Seller
 
     old_market_entry = market[ctx.caller, name] # Saves the old market entry for overwrite
     market[ctx.caller, name] += {"amount": old_market_entry["amount"] - amount, "price": currency_price} # Removing the amount sold of market entry
