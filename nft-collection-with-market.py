@@ -8,13 +8,21 @@ collection_nfts = Hash(default_value=0) # All NFTs of the collection
 collection_balances = Hash(default_value=0) # All user balances of the NFTs
 collection_balances_approvals = Hash(default_value=0) # Approval amounts of certain NFTs
 
+metadata = Hash()
+
 market = Hash(default_value=0) # Stores NFTs up for sale
 
 @construct
-def seed(name: str):
+def seed(name: str, royalties: int):
     collection_name.set(name) # Sets the name
     collection_owner.set(ctx.caller) # Sets the owner
+    metadata['royalties'] = royalties/100
 
+@export
+def change_metadata(key: str, new_value: str):
+    assert ctx.caller == metadata['operator'], "only operator can set metadata"
+    metadata[key] = new_value
+    
 # function to mint a new NFT
 @export
 def mint_nft(name: str, description: str, ipfs_image_url: str, metadata: dict, amount: int):
@@ -73,7 +81,9 @@ def buy_nft(name: str, seller: str, amount:int):
     assert amount > 0, 'Cannot buy negative NFT amount'
     assert market[seller, name]["amount"] >= amount, 'Not enough for sale'
 
-    currency.transfer_from(amount=market[seller, name]["price"] * amount, to=seller, main_account=ctx.caller) # Transfers TAU to Seller
+    currency.transfer_from(amount=market[seller, name]["price"] * amount * (1-royalties), to=seller, main_account=ctx.caller) # Transfers TAU (minus royalties) to Seller
+    currency.transfer_from(amount=market[seller, name]["price"] * amount * royalties, to=collection_owner.get(), main_account=ctx.caller) # Transfers TAU royalties to creator
+
 
     old_market_entry = market[ctx.caller, name] # Saves the old market entry for overwrite
     market[ctx.caller, name] = {"amount": old_market_entry["amount"] - amount, "price": currency_price} # Removing the amount sold of market entry
